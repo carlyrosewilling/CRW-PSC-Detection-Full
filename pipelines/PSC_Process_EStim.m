@@ -1,8 +1,8 @@
-%% CHR2 Analysis Pipeline%%
+%% EStim Analysis Pipeline%%
 
-%Written by CRW, 27 May 2019
+%Written by CRW, 17 June 2019
     
-function PSC_Process_CHR2(PSCTableDate, datedfolder);
+function PSC_Process_EStim(PSCTableDate, datedfolder);
 
 %% Turn off dumb warning for loading "wave" struct and directory
 warning('off', 'MATLAB:unknownObjectNowStruct');
@@ -15,7 +15,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
     prompt = {'Enter 1st stim pulse location:', 'Enter 2nd stim pulse location:'};
     dlgtitle = 'Inputs';
     dims = [1 75];
-    definput = {'10000', '10500'};
+    definput = {'10005', '10505'};
     answer = inputdlg(prompt, dlgtitle, dims, definput);
 
     stimlocation = answer{1};
@@ -25,16 +25,16 @@ warning('off', 'MATLAB:centerOfMass:neg');
     [nrows ncolumns] = size(PSCTableDate);
 
 %Makes input path given date information
-    prepath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '8-CHR2', 'Preprocessed Data', datedfolder);
+    prepath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '10-EStim', 'Preprocessed Data', datedfolder);
 
 %Makes save path given date information
-    savePath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '8-CHR2', '2-Output', strcat(datedfolder, '_output'));
+    savePath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '10-EStim', '2-Output', strcat(datedfolder, '_output'));
 
 %User enters which Epochs to run
     Epochs = input(['You have ', num2str(nrows) ' epochs. Input epochs to run in matrix form ']);
     disp(' ');
     
-    outputpath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '8-CHR2', '2-Output');
+    outputpath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '10-EStim', '2-Output');
     
 %% Organize by Epoch 
     %input for acquisitions and creation of filename directories
@@ -49,14 +49,14 @@ warning('off', 'MATLAB:centerOfMass:neg');
         celll = num2str(PSCTableDate{i, 3});
         location = PSCTableDate{i, 4};
         epochh = num2str(PSCTableDate{i,18});
-        magnitude = num2str(PSCTableDate{i,14});
+        magnitude = PSCTableDate{i,14};
         holding_current = PSCTableDate{i,15};
         names = cell(1, nACQ); %preallocate size of names
         savePath1 = fullfile(savePath, strcat('cell_', num2str(PSCTableDate{i, 3})), strcat('epoch_', num2str(PSCTableDate{i,18})));
         mkdir(savePath1);
         
-        [~, ~, AllTracesTable] = xlsread(fullfile(outputpath, 'CHR2_AllTraces.xlsx'));
-        [~, ~, AverageTraces] = xlsread(fullfile(outputpath, 'CHR2_AverageTraces.xlsx'));
+        [~, ~, AllTracesTable] = xlsread(fullfile(outputpath, 'EStim_AllTraces2.xlsx'));
+        [~, ~, AverageTraces] = xlsread(fullfile(outputpath, 'EStim_AverageTraces2.xlsx'));
         %prepath = fullfile(prepath, strcat('cell_', celll), strcat('epoch_', epochh));
         
         %lists file names for every sweep in Epoch
@@ -95,7 +95,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                          params.init_method.template_file = fullfile('//Volumes', 'Carly Rose', '2 - Code', '1 - MATLAB', 'CRW-PSC-Detection-master', 'template', 'ipsc-template.mat');
                     end
 
-                    params.init_method.threshold = 2.2; %in std of filtered trace (uses the zscore, so any spike above 2.35 std gets marked as an
+                    params.init_method.threshold = 1.8; %in std of filtered trace (uses the zscore, so any spike above 2.35 std gets marked as an
                                                            %event. This really depends on the noise ofthe data
                     params.init_method.min_interval = 100; %detects events only once in a # frame span.
                     params.dt = 1/10000; %time in seconds per sample
@@ -123,6 +123,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                     nfft = length(trace) + length(template);
                     
                     %Run wiener filter to get event times and amplitudes
+                    
                     [filtered_trace, event_times, event_amp] = wiener_filter_stim(trace*params.event_sign, params, template, nfft);
                     
                     if isempty(event_times) == 1
@@ -151,10 +152,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                     name.PPR = NaN;
                     
                     %Find AUC
-                    baseline1 = mean(name.data(stimlocation+230:stimlocation+15230));
-                    trace1 = traces-baseline1;
-                    trace1 = trace1*params.event_sign;
-                    name.AUC = sum(trace1(stimlocation+30:stimlocation+230));
+                    name.AUC = sum(trace(30:230));
                     
                     %Find Local Extrema after stim
                     if params.event_sign == -1
@@ -236,12 +234,12 @@ warning('off', 'MATLAB:centerOfMass:neg');
                 AllTracesTable = array2table(AllTracesTable);
                 print(fullfile(savePath1, strcat(mouseID, '_cell', celll, '_epoch', epochh, '_Overlay')), '-dpdf', '-fillpage', '-r1000');
                 close all 
-                writetable(AllTracesTable, fullfile(outputpath, 'CHR2_AllTraces.xlsx'), 'WriteVariableNames', false);
+                writetable(AllTracesTable, fullfile(outputpath, 'EStim_AllTraces2.xlsx'), 'WriteVariableNames', false);
                 
                 %% Write Average Traces
                 
                 if isempty(raw_concatenated_traces) == 1
-                    disp(strcat('All of epoch ', num2str(Epochs(i)), ' was rejected.'));
+                    disp(strcat('All of epoch ', epochh, ' was rejected.'));
                     continue;
                 end
                 
@@ -321,7 +319,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                 AverageTraces{roww2+1, 21} = avgPPRs;
                     
                 AverageTraces = array2table(AverageTraces);
-                writetable(AverageTraces, fullfile(outputpath, 'CHR2_AverageTraces.xlsx'), 'WriteVariableNames', false);
+                writetable(AverageTraces, fullfile(outputpath, 'EStim_AverageTraces2.xlsx'), 'WriteVariableNames', false);
                 
                 concatenated_traces = raw_concatenated_traces;
                 cellepoch = strcat('concatenated_traces_cell_', celll, '_epoch_', epochh,'.mat');
@@ -340,7 +338,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                     RCtrace=QCs(l,1001:end-803); %isolate only the beginning and downward peak of the QC check
                     steadyRC = mean(RCtrace((end-40):end));   %find the mean steady state current of 4ms before upward peak
                     dV = 5; % voltage step in mV
-                    [peakRC,peakloc] = min(RCtrace); %peak of downward spike 
+                    [peakRC,peakloc] = min(RCtrace(1:50)); %peak of downward spike 
                     baselineRC(l) = mean(QCs(l,1:999));  %find the mean baseline current
 
                     fittingTrace = [RCtrace((peakloc):(end-60))-steadyRC];  %fit the trace from the peak
@@ -453,7 +451,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
 
                     params.event_sign = -1;
                     params.init_method.template_file = fullfile('//Volumes', 'Carly Rose', '2 - Code', '1 - MATLAB', 'CRW-PSC-Detection-master', 'template', 'epsc-template.mat');
-                    params.init_method.threshold = 2.2; %in std of filtered trace (uses the zscore, so any spike above 2.35 std gets marked as an
+                    params.init_method.threshold = 1.8; %in std of filtered trace (uses the zscore, so any spike above 2.35 std gets marked as an
                                                        %event. This really depends on the noise ofthe data
                     params.init_method.min_interval = 100; %detects events only once in a 100 frame span.
                     params.dt = 1/10000; %time in seconds per sample
@@ -509,8 +507,8 @@ warning('off', 'MATLAB:centerOfMass:neg');
 
                     if ~isempty(name.event_times2) == 1;
                         name.event_times2 = name.event_times2(1);
-                        name.event_amp2 = (min(name.peristim2(25:name.event_times2+75))-baseline)*params.event_sign;
-                        [peak, loc] = min(name.peristim2(25:name.event_times2+75));
+                        name.event_amp2 = (min(name.peristim2(1:name.event_times2+75))-baseline)*params.event_sign;
+                        [peak, loc] = min(name.peristim2(1:name.event_times2+75));
                         if loc < name.event_times2 
                             name.event_times2 = loc;
                         end 
@@ -528,8 +526,8 @@ warning('off', 'MATLAB:centerOfMass:neg');
 
                     if ~isempty(name.event_times1) == 1;
                         name.event_times1 = name.event_times1(1);
-                        name.event_amp1 = (min(name.peristim1(25:name.event_times1+75))-baseline)*params.event_sign;
-                        [peak, loc] = min(name.peristim1(25:name.event_times1+75));
+                        name.event_amp1 = (min(name.peristim1(1:name.event_times1+75))-baseline)*params.event_sign;
+                        [peak, loc] = min(name.peristim1(1:name.event_times1+75));
                         if loc < name.event_times1
                             name.event_times1 = loc;
                         end
@@ -550,6 +548,10 @@ warning('off', 'MATLAB:centerOfMass:neg');
                         name.PPR = name.event_amp2/name.event_amp1;
                     else
                         name.PPR = [];
+                    end
+                    
+                    if name.PPR == [];
+                        continue;
                     end
 
                     %store initialization results in structure and save
@@ -613,7 +615,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                 
                 %% Write Average Traces
                 if isempty(raw_concatenated_traces) == 1
-                    disp(strcat('All of epoch ', num2str(Epochs(i)), ' was rejected.'));
+                    disp(strcat('All of epoch ', epochh, ' was rejected.'));
                     continue;
                 end
                 
@@ -689,10 +691,10 @@ warning('off', 'MATLAB:centerOfMass:neg');
                 AverageTraces{roww2+1, 21} = avgPPRs;
                 
                 AverageTraces = array2table(AverageTraces);
-                writetable(AverageTraces, fullfile(outputpath, 'CHR2_AverageTraces.xlsx'), 'WriteVariableNames', false);
+                writetable(AverageTraces, fullfile(outputpath, 'EStim_AverageTraces2.xlsx'), 'WriteVariableNames', false);
 
                 AllTracesTable = array2table(AllTracesTable);
-                writetable(AllTracesTable, fullfile(outputpath, 'CHR2_AllTraces.xlsx'), 'WriteVariableNames', false);
+                writetable(AllTracesTable, fullfile(outputpath, 'EStim_AllTraces2.xlsx'), 'WriteVariableNames', false);
                 
                 concatenated_traces = raw_concatenated_traces;
                 cellepoch = strcat('concatenated_traces_cell_', celll, '_epoch_', epochh,'.mat');
@@ -711,7 +713,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                     RCtrace=QCs(l,1001:end-1003); %isolate only the beginning and downward peak of the QC check
                     steadyRC = mean(RCtrace((end-40):end));   %find the mean steady state current of 4ms before upward peak
                     dV = 5; % voltage step in mV
-                    [peakRC,peakloc] = min(RCtrace); %peak of downward spike 
+                    [peakRC,peakloc] = min(RCtrace(1:50)); %peak of downward spike 
                     baselineRC(l) = mean(QCs(l,1:999));  %find the mean baseline current
 
                     %Rs(l) = dV/abs(steadyRC(l)-maxpeak).*1000;
@@ -815,7 +817,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                     %Use event sign gathered from excel in line 52
                     params.init_method.template_file = fullfile('//Volumes', 'Carly Rose', '2 - Code', '1 - MATLAB', 'CRW-PSC-Detection-master', 'template', 'epsc-template.mat');
 
-                    params.init_method.threshold = 2.2; %in std of filtered trace (uses the zscore, so any spike above 2.35 std gets marked as an
+                    params.init_method.threshold = 1.8; %in std of filtered trace (uses the zscore, so any spike above 2.35 std gets marked as an
                                                            %event. This really depends on the noise ofthe data
                     params.init_method.min_interval = 100; %detects events only once in a 170 frame span.
                     params.dt = 1/10000; %time in seconds per sample
@@ -871,10 +873,8 @@ warning('off', 'MATLAB:centerOfMass:neg');
                     name.PPR = NaN;
                     
                     %Find AUC
-                    baseline1 = mean(name.data(stimlocation+230:stimlocation+15230));
-                    trace1 = traces-baseline1;
-                    trace1 = trace1*params.event_sign;
-                    name.AUC = sum(trace1(stimlocation+30:stimlocation+230));
+                    
+                    name.AUC = sum(trace(30:230));
                     
                     %Find Local Extrema after stim
                     if params.event_sign == -1
@@ -965,7 +965,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                 %% Write Average Traces
                 
                 if isempty(raw_concatenated_traces) == 1
-                    disp(strcat('All of epoch ', num2str(Epochs(i)), ' was rejected.'));
+                    disp(strcat('All of epoch ', epochh, ' was rejected.'));
                     continue;
                 end
                 
@@ -1040,10 +1040,10 @@ warning('off', 'MATLAB:centerOfMass:neg');
                 AverageTraces{roww2+1, 20} = avgtaus2;
                 AverageTraces{roww2+1, 21} = avgPPRs;
                 AverageTraces = array2table(AverageTraces);     
-                writetable(AverageTraces, fullfile(outputpath, 'CHR2_AverageTraces.xlsx'), 'WriteVariableNames', false);
+                writetable(AverageTraces, fullfile(outputpath, 'EStim_AverageTraces2.xlsx'), 'WriteVariableNames', false);
 
                 AllTracesTable = array2table(AllTracesTable);
-                writetable(AllTracesTable, fullfile(outputpath, 'CHR2_AllTraces.xlsx'), 'WriteVariableNames', false);
+                writetable(AllTracesTable, fullfile(outputpath, 'EStim_AllTraces2.xlsx'), 'WriteVariableNames', false);
                 
                 concatenated_traces = raw_concatenated_traces;
                 cellepoch = strcat('concatenated_traces_cell_', celll, '_epoch_', epochh,'.mat');
@@ -1062,7 +1062,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                     RCtrace=QCs(l,1001:end-803); %isolate only the beginning and downward peak of the QC check
                     steadyRC = mean(RCtrace((end-40):end));   %find the mean steady state current of 4ms before upward peak
                     dV = 5; % voltage step in mV
-                    [peakRC,peakloc] = min(RCtrace); %peak of downward spike 
+                    [peakRC,peakloc] = min(RCtrace(1:50)); %peak of downward spike 
                     baselineRC(l) = mean(QCs(l,1:999));  %find the mean baseline current
 
                     %Rs(l) = dV/abs(steadyRC(l)-maxpeak).*1000;
@@ -1165,15 +1165,10 @@ warning('off', 'MATLAB:centerOfMass:neg');
 
                     name = eval(names{file}(1:end-4));
                     
-                    if holding_current == -70
-                        params.event_sign = -1;
-                        params.init_method.template_file = fullfile('//Volumes', 'Carly Rose', '2 - Code', '1 - MATLAB', 'CRW-PSC-Detection-master', 'template', 'epsc-template.mat');
-                    else
-                        params.event_sign = 1;
-                        params.init_method.template_file = fullfile('//Volumes', 'Carly Rose', '2 - Code', '1 - MATLAB', 'CRW-PSC-Detection-master', 'template', 'ipsc-template.mat');
-                    end
+                    params.event_sign = -1;
+                    params.init_method.template_file = fullfile('//Volumes', 'Carly Rose', '2 - Code', '1 - MATLAB', 'CRW-PSC-Detection-master', 'template', 'epsc-template.mat');
 
-                    params.init_method.threshold = 2.2; %in std of filtered trace (uses the zscore, so any spike above 2.35 std gets marked as an
+                    params.init_method.threshold = 1.8; %in std of filtered trace (uses the zscore, so any spike above 2.35 std gets marked as an
                                                            %event. This really depends on the noise ofthe data
                     params.init_method.min_interval = 100; %detects events only once in a 170 frame span.
                     params.dt = 1/10000; %time in seconds per sample
@@ -1229,10 +1224,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                     name.PPR = NaN;
                     
                     %Find AUC
-                    baseline1 = mean(name.data(stimlocation+230:stimlocation+15230));
-                    trace1 = traces-baseline1;
-                    trace1 = trace1*params.event_sign;
-                    name.AUC = sum(trace1(stimlocation+30:stimlocation+230));
+                    name.AUC = sum(trace(30:230));
                     
                     %Find Local Extrema after stim
                     if params.event_sign == -1
@@ -1317,7 +1309,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                 %% Write Average Traces
                 
                 if isempty(raw_concatenated_traces) == 1
-                    disp(strcat('All of epoch ', num2str(Epochs(i)), ' was rejected.'));
+                    disp(strcat('All of epoch ', epochh, ' was rejected.'));
                     continue;
                 end
                 
@@ -1393,10 +1385,10 @@ warning('off', 'MATLAB:centerOfMass:neg');
                 AverageTraces{roww2+1, 21} = avgPPRs;
 
                 AverageTraces = array2table(AverageTraces);
-                writetable(AverageTraces, fullfile(outputpath, 'CHR2_AverageTraces.xlsx'), 'WriteVariableNames', false);
+                writetable(AverageTraces, fullfile(outputpath, 'EStim_AverageTraces2.xlsx'), 'WriteVariableNames', false);
 
                 AllTracesTable = array2table(AllTracesTable);
-                writetable(AllTracesTable, fullfile(outputpath, 'CHR2_AllTraces.xlsx'), 'WriteVariableNames', false);
+                writetable(AllTracesTable, fullfile(outputpath, 'EStim_AllTraces2.xlsx'), 'WriteVariableNames', false);
                 
                 concatenated_traces = raw_concatenated_traces;
                 cellepoch = strcat('concatenated_traces_cell_', celll, '_epoch_', epochh,'.mat');
@@ -1415,7 +1407,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                     RCtrace=QCs(l,1001:end-803); %isolate only the beginning and downward peak of the QC check
                     steadyRC = mean(RCtrace((end-40):end));   %find the mean steady state current of 4ms before upward peak
                     dV = 5; % voltage step in mV
-                    [peakRC,peakloc] = min(RCtrace); %peak of downward spike 
+                    [peakRC,peakloc] = min(RCtrace(1:50)); %peak of downward spike 
                     baselineRC(l) = mean(QCs(l,1:999));  %find the mean baseline current
 
                     %Rs(l) = dV/abs(steadyRC(l)-maxpeak).*1000;
@@ -1518,15 +1510,10 @@ warning('off', 'MATLAB:centerOfMass:neg');
 
                     name = eval(names{file}(1:end-4));
                     
-                    if holding_current == -70
-                        params.event_sign = -1;
-                        params.init_method.template_file = fullfile('//Volumes', 'Carly Rose', '2 - Code', '1 - MATLAB', 'CRW-PSC-Detection-master', 'template', 'epsc-template.mat');
-                    else
-                        params.event_sign = 1;
-                        params.init_method.template_file = fullfile('//Volumes', 'Carly Rose', '2 - Code', '1 - MATLAB', 'CRW-PSC-Detection-master', 'template', 'ipsc-template.mat');
-                    end
+                    params.event_sign = 1;
+                    params.init_method.template_file = fullfile('//Volumes', 'Carly Rose', '2 - Code', '1 - MATLAB', 'CRW-PSC-Detection-master', 'template', 'ipsc-template.mat');
 
-                    params.init_method.threshold = 2.2; %in std of filtered trace (uses the zscore, so any spike above 2.35 std gets marked as an
+                    params.init_method.threshold = 1.8; %in std of filtered trace (uses the zscore, so any spike above 2.35 std gets marked as an
                                                            %event. This really depends on the noise ofthe data
                     params.init_method.min_interval = 100; %detects events only once in a 170 frame span.
                     params.dt = 1/10000; %time in seconds per sample
@@ -1582,10 +1569,8 @@ warning('off', 'MATLAB:centerOfMass:neg');
                     name.PPR = NaN;
                     
                     %Find AUC
-                    baseline1 = mean(name.data(stimlocation+230:stimlocation+15230));
-                    trace1 = traces-baseline1;
-                    trace1 = trace1*params.event_sign;
-                    name.AUC = sum(trace1(stimlocation+30:stimlocation+230));
+                    
+                    name.AUC = sum(trace(30:230));
                     
                     %Find Local Extrema after stim
                     if params.event_sign == -1
@@ -1671,7 +1656,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                 %% Write Average Traces
                 
                 if isempty(raw_concatenated_traces) == 1
-                    disp(strcat('All of epoch ', num2str(Epochs(i)), ' was rejected.'));
+                    disp(strcat('All of epoch ', epochh, ' was rejected.'));
                     continue;
                 end
                 
@@ -1747,10 +1732,10 @@ warning('off', 'MATLAB:centerOfMass:neg');
                 AverageTraces{roww2+1, 21} = avgPPRs;
                 
                 AverageTraces = array2table(AverageTraces);
-                writetable(AverageTraces, fullfile(outputpath, 'CHR2_AverageTraces.xlsx'), 'WriteVariableNames', false);
+                writetable(AverageTraces, fullfile(outputpath, 'EStim_AverageTraces2.xlsx'), 'WriteVariableNames', false);
 
                 AllTracesTable = array2table(AllTracesTable);
-                writetable(AllTracesTable, fullfile(outputpath, 'CHR2_AllTraces.xlsx'), 'WriteVariableNames', false);
+                writetable(AllTracesTable, fullfile(outputpath, 'EStim_AllTraces2.xlsx'), 'WriteVariableNames', false);
                 
                 concatenated_traces = raw_concatenated_traces;
                 cellepoch = strcat('concatenated_traces_cell_', celll, '_epoch_', epochh,'.mat');
@@ -1770,7 +1755,7 @@ warning('off', 'MATLAB:centerOfMass:neg');
                     RCtrace=QCs(l,1001:end-803); %isolate only the beginning and downward peak of the QC check
                     steadyRC = mean(RCtrace((end-40):end));   %find the mean steady state current of 4ms before upward peak
                     dV = 5; % voltage step in mV
-                    [peakRC,peakloc] = min(RCtrace); %peak of downward spike 
+                    [peakRC,peakloc] = min(RCtrace(1:50)); %peak of downward spike 
                     baselineRC(l) = mean(QCs(l,1:999));  %find the mean baseline current
 
                     %Rs(l) = dV/abs(steadyRC(l)-maxpeak).*1000;

@@ -20,7 +20,7 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
     prompt = {'Enter date of recording (i.e. 01/06/2019):', 'Enter experiment type (i.e. PPR, WT minis, Isolated minis, CHR2):', 'Enter Recorder:', 'Enter QC Pulse Beginning:', 'Enter QC Pulse End:'};
     dlgtitle = 'Inputs';
     dims = [1 75];
-    definput = {'01/06/2019', 'PPR, WT minis, Isolated minis, CHR2', 'WW or KM', 'Index of first peak', 'Index of second peak'};
+    definput = {'01/06/2019', 'PPR, WT minis, Isolated minis, CHR2, EStim', 'WW or KM', 'Index of first peak', 'Index of second peak'};
     answer = inputdlg(prompt, dlgtitle, dims, definput);
 
     date = answer{1};
@@ -62,7 +62,7 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
         acq2 = 16;
         exp = 4;
     elseif isequal(Experiment, 'CHR2') == 1
-        filename = 'Overview_ChR2.xlsx';
+        filename = 'Overview_ChR2_copy.xlsx';
         pathname = '//Volumes/Neurobio/MICROSCOPE/Kevin/3-Experiments/4-SliceEphys/8-CHR2/1-Raw Data/';
         expfold = '8-CHR2';
         ep = 18;
@@ -70,6 +70,24 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
         acq1 = 16;
         acq2 = 17;
         exp = 13; 
+    elseif isequal(Experiment, 'EStim') == 1
+        filename = 'Overview_wavebook_EStim3.xlsx';
+        pathname = '//Volumes/Neurobio/MICROSCOPE/Kevin/3-Experiments/4-SliceEphys/10-EStim/1-Raw Data/';
+        expfold = '10-EStim';
+        ep = 18;
+        ce = 3;
+        acq1 = 16;
+        acq2 = 17;
+        exp = 13; 
+    elseif isequal(Experiment, 'Plexicon Minis') == 1
+        filename = 'Overview_wavebook_Plexicon.xlsx';
+        pathname = '//Volumes/Neurobio/MICROSCOPE/Kevin/3-Experiments/4-SliceEphys/9-Plexicon/1-Raw Data/';
+        expfold = '9-Plexicon';
+        ep = 17;
+        ce = 3;
+        acq1 = 15;
+        acq2 = 16;
+        exp = 4; 
     else
         disp('Invalid Experiment Choice');    
     end
@@ -174,11 +192,11 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
                     disp('On to the next! Only one more to go!')
                     disp('------------------------------')
                 else
-                    disp(['**On to the next! ' num2str(nACQ-file) ' traces left for epoch ' num2str(PSCTableDate{i,18}) '***']);
+                    disp(['**On to the next! ' num2str(nACQ-file) ' traces left for epoch ' num2str(PSCTableDate{i,ep}) '***']);
                     disp('------------------------------');
                 end
             else
-                disp(['Done with epoch #' num2str(PSCTableDate{i,18})]); %18
+                disp(['Done with epoch #' num2str(PSCTableDate{i,ep})]); %18
             end
            
             %clear all variables from this trace to save memory
@@ -199,7 +217,7 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
             RCtrace=QCs(l,1001:end-803); %isolate only the beginning and downward peak of the QC check
             steadyRC = mean(RCtrace((end-40):end));   %find the mean steady state current of 4ms before upward peak
             dV = 5; % voltage step in mV
-            [peakRC,peakloc] = min(RCtrace); %peak of downward spike 
+            [peakRC,peakloc] = min(RCtrace(1:900)); %peak of downward spike 
             baselineRC(l) = mean(QCs(l,1:999));  %find the mean baseline current
         
             %Rs(l) = dV/abs(steadyRC(l)-maxpeak).*1000;

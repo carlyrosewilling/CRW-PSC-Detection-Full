@@ -10,15 +10,15 @@
     
 %User inputs date of acquisition, and cell and epoch to process
     date = input('Input date of recording (i.e. 01/06/2019): ', 's');
-    recorder = Input('KM or WW?', 's');
+    recorder = input('KM or WW?', 's');
     cell = input('Input cell: ', 's');
     epoch = input('Input epoch: ', 's');
     
 %Makes input path given date information
-    datedfolder = strcat('recorder', date(1:2), date(4:5), date(9:end), '_output');
+    datedfolder = strcat(recorder, date(1:2), date(4:5), date(9:end), '_output');
     cellfolder = strcat('cell_', cell);
     epochfolder = strcat('epoch_', epoch);
-    prepath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '5-Isolated Mice', '2-Output', datedfolder, cellfolder, epochfolder);
+    prepath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '9-Plexicon', '2-Output', datedfolder, cellfolder, epochfolder);
     filename = strcat('Accepted_Traces_cell', cell, '_epoch', epoch, '.xlsx');
 
     [~, ~, aPSCTableRaw] = xlsread(fullfile(prepath, filename));
@@ -27,7 +27,7 @@
 concatenated_traces = [];
 for index = 2:length(aPSCTableRaw)
     name = aPSCTableRaw{index,1};
-    load(fullfile(pathname, name));
+    load(fullfile(prepath, name));
     name2 = eval(name(1:end-9));
     if isfield(name2, 'QC') == 1
         name2.Resistance = PSC_QCCheck(name2.QC);
@@ -38,9 +38,11 @@ for index = 2:length(aPSCTableRaw)
     clear(name(1:end-9));
 end
 
-%removes unnecessary fields from data
-fields = {'data', 'xscale', 'yscale', 'zscale', 'plot', 'UserData', 'note', 'timeStamp', 'holdUpdates', 'needsReplot'};
-concatenated_traces = rmfield(concatenated_traces, fields);
+%event_amp exclusion
+for i = 1:length(concatenated_traces);
+    concatenated_traces(i).event_times(concatenated_traces(i).event_amp < 7) =[];
+    concatenated_traces(i).event_amp(concatenated_traces(i).event_amp < 7) =[];
+end
 
 x = concatenated_traces(1).params;
 
@@ -49,13 +51,13 @@ x = concatenated_traces(1).params;
 for i = 1:length(concatenated_traces);
     concatenated_traces(i).num_events = length(concatenated_traces(i).event_times);
     concatenated_traces(i).avg_amplitude = mean(concatenated_traces(i).event_amp);
-    concatenated_traces(i).frequency_of_events = (concatenated_traces(i).num_events/length(concatenated_traces(i).raw_trace))*(1/concatenated_traces(i).params.dt);
+    concatenated_traces(i).frequency_of_events = (concatenated_traces(i).num_events/length(concatenated_traces(i).rawdata))*(1/concatenated_traces(i).params.dt);
     concatenated_traces(i).avg_ISI = mean(concatenated_traces(i).ISIs);
     concatenated_traces(i).average_resistance = mean(concatenated_traces(i).Resistance);
 end 
 
 %Saves concatenated trace
-save(fullfile(pathname, strcat('Concatenated_Traces_cell', x.cell, '_epoch',x.epoch, '.mat')), 'concatenated_traces');
+save(fullfile(prepath, strcat('Concatenated_Traces_cell', x.cell, '_epoch',x.epoch, '.mat')), 'concatenated_traces');
 
 
 %Initialize to find averages
@@ -92,8 +94,8 @@ avg_resistance = mean(resistance);
 std_resistance = std(resistance);
 
 %[filename2 pathname2 ~] = uigetfile({'*.xlsx', '*xls*'}, 'Select Excel file with cell summaries');
-filename2 = 'Cell Summary-Isolated.xlsx';
-pathname2 = '/Volumes/Neurobio/MICROSCOPE/Kevin/3-Experiments/4-SliceEphys/5-Isolated Mice/2-Output/';
+filename2 = 'Cell Summary-Plexicon.xlsx';
+pathname2 = '/Volumes/Neurobio/MICROSCOPE/Kevin/3-Experiments/4-SliceEphys/9-Plexicon/2-Output/';
 [~, ~, cellTableRaw] = xlsread(fullfile(pathname2, filename2));
 [height width] = size(cellTableRaw);
 

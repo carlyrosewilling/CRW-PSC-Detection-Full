@@ -9,19 +9,55 @@
         %spikes that are closer together.
     %change lines 26, 29, 118 and 124 to reflect local path.
 
-function PSC_Isolated_Minis(PSCTableDate, datedfolder);
     
     %% Turn off dumb warning for loading "wave" struct and directory
 warning('off', 'MATLAB:unknownObjectNowStruct');
 warning('off', 'MATLAB:MKDIR:DirectoryExists');
 
+
+
+    prompt = {'Enter date of recording (i.e. 01/06/2019):', 'Enter Recorder:', 'Experiment:'};
+    dlgtitle = 'Inputs';
+    dims = [1 75];
+    definput = {'01/06/2019', 'WW or KM', 'WT Minis, Isolated Minis, Plexicon Minis, PPR, CHR2'};
+    answer = inputdlg(prompt, dlgtitle, dims, definput);
+
+    date = answer{1};
+    recorder = answer{2};
+    experiment = answer{3};
+
+    
+    %User enters date of aquisition for parsing Excel Sheet
+    tabledate = str2num(strcat(date(7:end), date(1:2), date(4:5)));
+    filename = 'Overview_wavebook_Plexicon.xlsx';
+    pathname = '//Volumes/Neurobio/MICROSCOPE/Kevin/3-Experiments/4-SliceEphys/9-Plexicon/1-Raw Data/';
+    expfold = '9-Plexicon';
+    PSC_LoadExcel(pathname, filename);
+    
+    recorderdate = strcat(recorder, date(1:2), date(4:5), date(9:10));
+    
+    PSCTableDate = {};
+    [row column] = size(PSCTableRaw);
+    for j = 2:row
+        if PSCTableRaw{j,1} == tabledate 
+            if PSCTableRaw{j,2} == recorderdate
+                row = horzcat(PSCTableRaw(j,:));
+                PSCTableDate = vertcat(PSCTableDate, row);
+            else
+                PSCTableDate = PSCTableDate;
+            end
+        else
+            PSCTableDate = PSCTableDate;
+        end
+    end
 %% Initialize %%
      [nrows ncolumns] = size(PSCTableDate);
+     datedfolder = PSCTableDate{1,2};
 %Makes input path given date information
-    prepath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '5-Isolated Mice', 'Preprocessed Data', datedfolder);
+    prepath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '9-Plexicon', 'Preprocessed Data', datedfolder);
 
 %Makes save path given date information
-    savePath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '5-Isolated Mice', '2-Output', strcat(datedfolder, '_output'));
+    savePath = fullfile('//Volumes', 'Neurobio', 'MICROSCOPE', 'Kevin', '3-Experiments', '4-SliceEphys', '9-Plexicon', '2-Output', strcat(datedfolder, '_output'));
     
 %User enters which Epochs to run
     Epochs = input(['You have ', num2str(nrows) ' epochs. Input epochs to run in matrix form ']);
@@ -40,7 +76,8 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
         mkdir(savePath1);
         celll = num2str(PSCTableDate{i, 3});
         epochh = num2str(PSCTableDate{i, 17});
-        
+        mouseID = PSCTableDate{i,2}; 
+        raw_concatenated_traces = [];
         %lists file names for every sweep in Epoch
         for nameindex = 1:nACQ
             names{nameindex} = strcat('AD0_', num2str(acqsweeps(nameindex)), '.mat');
@@ -65,11 +102,14 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
             end 
               
             name = eval(names{file}(1:end-4));
+            
            
-            
-            %Use event sign gathered from excel in line 52
-            params.event_sign = event_sign;
-            
+            if event_sign == -70
+                params.event_sign = -1;
+            else
+                params.event_sign = 1;
+            end
+
             %Get a_min/max using baseline data and event sign. (these don't
                 %really matter anymore since we aren't using sampler)
             if params.event_sign == -1 
@@ -87,7 +127,7 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
             params.dt = 1/10000; %time in seconds per sample
             params.location = PSCTableDate{i, 4};
             params.init_method.ar_noise_params.sigma_sq = 3;
-            params.init_method.ar_noise_params.phi = [1.000000000000000, 1.0, -0.25];
+            params.init_method.ar_noise_params.phi = [1.000000000000000, 1.0, -0.23];
             %update params to reflect current trace being analyzed 
             params.traces_file = names{file};
             params.savename = [params.traces_file(1:end-4) '-proc.mat'];
@@ -102,7 +142,7 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
             load_struct = load(params.init_method.template_file);
             template = load_struct.template;
             
-            raw_trace = traces; %preserve raw trace
+            traces = name.rawdata; %preserve raw trace
             trace = params.event_sign*traces;
             trace = trace - min(trace);
 
@@ -126,57 +166,39 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
                 name.ISIs = [event_times(1) diff(event_times)];
             end 
             
-            name.SpikeTrain = zeros([1 length(raw_trace)]);
+            name.SpikeTrain = zeros([1 length(traces)]);
             
             for times = event_times;
                 name.SpikeTrain(times) = 1;
             end
 
             name.filtered_trace = filtered_trace;
-            name.raw_trace = raw_trace;
-            name.QC = QC;
             
             raw_concatenated_traces = [raw_concatenated_traces name];
+            
             assignin('base', params.traces_file(1:end-4), name);
             
             save(params.full_save_string, params.traces_file(1:end-4));
 
 %% Plot things and Move On!
 
-            
-            %plot some shit! 
-            %disp(' ');
-            %disp('Plotting Traces and Events');
-            
-            %plot_init_events_over_trace(raw_trace, results, params)
-            %Uncomment if you want a plot for every trace
-            
-            %saveas(gcf, strcat(params.savepath, params.savename(1:end-4),
-            %'.fig')); uncomment this if you want to save a figure for
-            %every sweep.
-            
-            % ...and we're out.
-            %disp('~~This trace is done!~~');
-            
-            %displays to user based on current stage of analysis
             if file ~= nACQ
                 if file == nACQ-1
                     disp('On to the next! Only one more to go!')
                     disp('------------------------------')
                 else
-                    disp(['**On to the next! ' num2str(nACQ-file) ' traces left for epoch ' epochh '***']);
+                    disp(['**On to the next! ' num2str(nACQ-file) ' traces left for epoch ' num2str(PSCTableDate{i,17}) '***']);
                     disp('------------------------------');
                 end
             else
-                disp(['Done with epoch #' epochh]);
+                disp(['Done with epoch #' num2str(PSCTableDate{i,17})]);
             end
            
             %clear all variables from this trace to save memory
             clear(params.traces_file(1:end-4))
             clear name base_params params results traces trace times event_times event_amp filtered_trace raw_trace iQCSpikeBegin iQCSpikeEnd QC 
-        
         end
-        disp('Running Quality Control Check');
+                disp('Running Quality Control Check');
                 QCs = zeros(length(raw_concatenated_traces), length(raw_concatenated_traces(1).QC));
                 for QCCheck = 1:length(raw_concatenated_traces)
                     QCs(QCCheck,:) = raw_concatenated_traces(QCCheck).QC;
@@ -269,6 +291,7 @@ warning('off', 'MATLAB:MKDIR:DirectoryExists');
             %Close everything
                 close all
     clear names acsweeps nACQ savePath1
+
     end
 
 %% End display and turn back on warnings

@@ -1,4 +1,4 @@
-function [ output_args ] = PSC_LoadExcel(pathname, filename)
+function [PSCTableRaw] = PSC_LoadExcel(pathname, filename)
 %% Function to read Excel file for PSC detection pipeline
     %Written by CRW, Sept 9 2018
         %last updated: Sept 10 2018

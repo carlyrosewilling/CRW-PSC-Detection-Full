@@ -197,13 +197,13 @@ cla;
         ylim auto
         xlim([0 length(I.besseled)]);
     else 
-        plot(I.raw_trace, 'Color', [0.3010, 0.7450, 0.9330]); 
+        plot(I.rawdata, 'Color', [0.3010, 0.7450, 0.9330]); 
         hold on;
-        scatter(I.event_times, repmat(mean(I.raw_trace),1,length(I.event_times)), 50, [1, 0.33, 0.64]); %plots events ontop of unfiltered trace
+        scatter(I.event_times, repmat(mean(I.rawdata),1,length(I.event_times)), 50, [1, 0.33, 0.64]); %plots events ontop of unfiltered trace
         title(strcat('Unfiltered ', ' ', I.params.traces_file(1:end-4), ' ', ' Data with Events'), 'Interpreter', 'none');
         ylabel('mV');
         ylim auto
-        xlim([0 length(I.raw_trace)]);
+        xlim([0 length(I.rawdata)]);
     end
     
 axes(handles.axes4);
@@ -287,13 +287,9 @@ set(handles.listbox3, 'String', newitems3);
 function pushbutton10_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton10 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-if isempty(get(handles.listbox1, 'String')) == 0
-    f = warndlg('You have not processed all traces','Warning');
-end 
 
-allacc = get(handles.listbox3, 'String');
-selected2 = get(handles.listbox3, 'value');
+allacc = get(handles.listbox2, 'String');
+selected2 = get(handles.listbox2, 'value');
 load(fullfile(handles.folder, cell2mat(allacc(selected2))));
 name2 = allacc{selected2};
 I2 = eval(name2(1:end-9));
